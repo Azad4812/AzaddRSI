@@ -9,7 +9,7 @@ const ISSUES = [
   "RVP Pickup Issue",
 ];
 const STATUS = ["Resolved", "Pending", "Escalated"];
-const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
+const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
 
 // Paste your Google Apps Script Web App URL here after Step 2 below
 const SHEET_API_URL = "https://script.google.com/a/macros/cmsupport.live/s/AKfycbytwqM4faw5bREETuMFVfdH4C7sN9xXmcv3en4hJES9--72eBaFWoYQvGnTkASDXTU0/exec";
