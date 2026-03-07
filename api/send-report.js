@@ -3,7 +3,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
+  const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
   const { entries, stats, winner } = req.body;
 
   try {
@@ -60,7 +60,9 @@ export default async function handler(req, res) {
     const slackBody = await slackRes.text();
 
     if (!slackRes.ok) {
-      return res.status(500).json({ error: `Slack error: ${slackRes.status} — ${slackBody}` });
+      return res.status(500).json({ 
+        error: `Slack error: ${slackRes.status} — ${slackBody}` 
+      });
     }
 
     return res.status(200).json({ success: true, report: reportText });
