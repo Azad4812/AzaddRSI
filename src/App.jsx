@@ -15,7 +15,7 @@ const KAM_MAP = {
   "Shipment Delivery Issue": { name: "Sagar",     email: "sagar@citymall.live" },
 };
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => new Date().toLocaleDateString("en-CA", {timeZone:"Asia/Kolkata"});
 
 async function sheetRequest(action, data) {
   try {
@@ -81,9 +81,9 @@ export default function App() {
           ...e,
           id: Number(e.id),
           diffMins: e.diffMins ? Number(e.diffMins) : null,
-          date: e.date ? String(e.date).split("T")[0] : e.date,
-          sellerTime: e.sellerTime ? String(e.sellerTime).split("T")[1]?.slice(0,5) || e.sellerTime : e.sellerTime,
-          teamTime: e.teamTime ? String(e.teamTime).split("T")[1]?.slice(0,5) || e.teamTime : e.teamTime,
+          date: e.date ? new Date(e.date).toLocaleDateString("en-CA", {timeZone:"Asia/Kolkata"}) : e.date,
+          sellerTime: e.sellerTime ? new Date(e.sellerTime).toLocaleTimeString("en-GB", {timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"}) : e.sellerTime,
+          teamTime: e.teamTime ? new Date(e.teamTime).toLocaleTimeString("en-GB", {timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"}) : e.teamTime,
         })));
       } else {
         setLoadError(data.error || JSON.stringify(data).slice(0,200));
