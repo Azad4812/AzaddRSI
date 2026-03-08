@@ -6,7 +6,7 @@ const ISSUES = ["Pickup Issue", "Shipment Delivery Issue", "RTO Issue", "RVP Pic
 const COURIERS = ["Delhivery", "Ecom Express", "XpressBees", "BlueDart", "DTDC", "Other"];
 const STATUS = ["Resolved", "Pending", "Escalated"];
 const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
-const SHEET_API_URL = "https://script.google.com/a/macros/cmsupport.live/s/AKfycbytwqM4faw5bREETuMFVfdH4C7sN9xXmcv3en4hJES9--72eBaFWoYQvGnTkASDXTU0/exec";
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyHOU-kIu-ozFO7dJRBKj63heHLBa4KnpiiTLoFX_X-yEBst8Qo-suWbHffnx6t46Bt/exec";
 
 const KAM_MAP = {
   "Pickup Issue":            { name: "Azad Khan",  email: "azad.k@cmsupport.live" },
