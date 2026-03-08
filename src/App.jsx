@@ -78,8 +78,12 @@ export default function App() {
       const data = await res.json();
       if (data.success && data.entries) {
         setEntries(data.entries.map(e => ({
-          ...e, id:Number(e.id),
+          ...e,
+          id: Number(e.id),
           diffMins: e.diffMins ? Number(e.diffMins) : null,
+          date: e.date ? String(e.date).split("T")[0] : e.date,
+          sellerTime: e.sellerTime ? String(e.sellerTime).split("T")[1]?.slice(0,5) || e.sellerTime : e.sellerTime,
+          teamTime: e.teamTime ? String(e.teamTime).split("T")[1]?.slice(0,5) || e.teamTime : e.teamTime,
         })));
       } else {
         setLoadError(data.error || JSON.stringify(data).slice(0,200));
