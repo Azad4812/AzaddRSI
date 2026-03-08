@@ -275,4 +275,156 @@ export default function App() {
               <button onClick={handleAdd} disabled={!form.sellerName||!form.sellerTime||!form.teamTime} style={S.btn("#f59e0b","#0f1117",!form.sellerName||!form.sellerTime||!form.teamTime)}>
                 {editId?"✏️ UPDATE ENTRY":"➕ ADD ENTRY"}
               </button>
-              {editId&&<button onClick={()=>{setEditId(null);setForm(EMPTY);}} style={S.btn("#1e293b","#94a3b8",false)}>
+              {editId&&<button onClick={()=>{setEditId(null);setForm(EMPTY);}} style={S.btn("#1e293b","#94a3b8",false)}>Cancel</button>}
+            </div>
+          </div>
+        )}
+
+        {tab==="entries"&&(
+          <div>
+            <DateFilter/>
+            {filtered.length===0
+              ?<div style={{color:"#475569",fontSize:13,textAlign:"center",padding:"40px 0"}}>No entries for this period.</div>
+              :<div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {filtered.slice().reverse().map(e=>(
+                  <div key={e.id} style={{background:"#1e293b",borderLeft:`4px solid ${e.status==="Resolved"?"#34d399":e.status==="Pending"?"#f59e0b":"#f87171"}`,border:"1px solid #334155",borderRadius:8,padding:"12px 14px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap",gap:6}}>
+                      <span style={{fontWeight:700,fontSize:14,color:"#f1f5f9"}}>{e.sellerName}</span>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <span style={{fontSize:10,color:"#64748b"}}>{formatDate(e.date)}</span>
+                        <span style={{background:e.status==="Resolved"?"#d1fae5":e.status==="Pending"?"#fef3c7":"#fee2e2",color:e.status==="Resolved"?"#065f46":e.status==="Pending"?"#92400e":"#991b1b",padding:"2px 8px",borderRadius:99,fontSize:10,fontWeight:700}}>{e.status}</span>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:11,color:"#64748b"}}>{e.issue}</span>
+                      {e.courier&&<span style={{fontSize:11,color:"#38bdf8",background:"#0c4a6e22",padding:"1px 6px",borderRadius:4}}>{e.courier}</span>}
+                      <span style={{fontSize:11,color:"#a78bfa"}}>📧 {KAM_MAP[e.issue]?.name}</span>
+                    </div>
+                    <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}>
+                      <div><div style={{fontSize:9,color:"#64748b"}}>BY</div><div style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>{e.respondedBy}</div></div>
+                      <div><div style={{fontSize:9,color:"#64748b"}}>TIME</div><div style={{fontSize:11,color:"#94a3b8"}}>{e.sellerTime}→{e.teamTime}</div></div>
+                      <div><div style={{fontSize:9,color:"#64748b"}}>RESPONSE</div><div style={{fontSize:16,fontWeight:700,color:e.diffMins<=10?"#34d399":e.diffMins<=30?"#f59e0b":"#f87171"}}>{formatMins(e.diffMins)}</div></div>
+                      <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                        <button onClick={()=>handleEdit(e)} style={{background:"#334155",border:"none",borderRadius:6,padding:"5px 10px",color:"#94a3b8",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>Edit</button>
+                        <button onClick={()=>handleDelete(e.id)} style={{background:"#450a0a",border:"none",borderRadius:6,padding:"5px 10px",color:"#f87171",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>✕</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            }
+          </div>
+        )}
+
+        {tab==="perf"&&(
+          <div>
+            <DateFilter/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+              {stats.map(s=>(
+                <div key={s.person} style={{...S.card(),position:"relative",border:`2px solid ${s.person===winner?.person&&filtered.length>0?"#f59e0b":"#334155"}`}}>
+                  {s.person===winner?.person&&filtered.length>0&&<div style={{position:"absolute",top:-10,right:10,background:"#f59e0b",color:"#0f1117",fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:99}}>⭐ STAR</div>}
+                  <div style={{fontSize:14,fontWeight:700,color:"#f1f5f9",marginBottom:10}}>{s.person}</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    {[["HANDLED",s.total,"#a78bfa"],["RESOLVED",s.resolved,"#34d399"],["AVG",formatMins(s.avg),"#38bdf8"],["FASTEST",formatMins(s.fastest),"#fb923c"]].map(([l,v,c])=>(
+                      <div key={l} style={{background:"#0f1117",borderRadius:8,padding:"8px"}}>
+                        <div style={{fontSize:8,color:"#64748b",letterSpacing:"0.1em"}}>{l}</div>
+                        <div style={{fontSize:18,fontWeight:700,color:c,marginTop:2}}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {s.total>0&&<div style={{marginTop:10}}>
+                    <div style={{background:"#0f1117",borderRadius:99,height:5,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${(s.resolved/s.total)*100}%`,background:"linear-gradient(90deg,#34d399,#059669)",borderRadius:99}}/>
+                    </div>
+                    <div style={{fontSize:10,color:"#34d399",textAlign:"right",marginTop:2}}>{Math.round((s.resolved/s.total)*100)}% resolved</div>
+                  </div>}
+                </div>
+              ))}
+            </div>
+            <div style={{...S.card(),marginBottom:12}}>
+              <div style={{fontSize:11,color:"#64748b",letterSpacing:"0.08em",marginBottom:12}}>📧 KAM REPORT BREAKDOWN</div>
+              {Object.entries(KAM_MAP).reduce((acc,[issue,kam])=>{
+                if(!acc.find(x=>x.email===kam.email)) acc.push({...kam,issues:[]});
+                acc.find(x=>x.email===kam.email).issues.push(issue);
+                return acc;
+              },[]).map(kam=>{
+                const tickets=filtered.filter(e=>kam.issues.includes(e.issue));
+                return(
+                  <div key={kam.email} style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #0f1117"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <div>
+                        <span style={{fontSize:12,fontWeight:700,color:"#f1f5f9"}}>{kam.name}</span>
+                        <span style={{fontSize:10,color:"#64748b",marginLeft:8}}>{kam.email}</span>
+                      </div>
+                      <span style={{fontSize:14,fontWeight:700,color:"#f59e0b"}}>{tickets.length} tickets</span>
+                    </div>
+                    <div style={{fontSize:10,color:"#64748b",marginBottom:6}}>{kam.issues.join(" · ")}</div>
+                    <div style={{background:"#0f1117",borderRadius:99,height:5,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:filtered.length?`${(tickets.length/filtered.length)*100}%`:"0%",background:"#a78bfa",borderRadius:99}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={S.card()}>
+              <div style={{fontSize:11,color:"#64748b",letterSpacing:"0.08em",marginBottom:12}}>ISSUE BREAKDOWN</div>
+              {ISSUES.map(issue=>{
+                const count=filtered.filter(e=>e.issue===issue).length;
+                const pct=filtered.length?(count/filtered.length)*100:0;
+                return <div key={issue} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                    <span style={{fontSize:11,color:"#94a3b8"}}>{issue}</span>
+                    <span style={{fontSize:11,color:"#f59e0b",fontWeight:700}}>{count}</span>
+                  </div>
+                  <div style={{background:"#0f1117",borderRadius:99,height:5,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${pct}%`,background:"#f59e0b",borderRadius:99}}/>
+                  </div>
+                </div>;
+              })}
+            </div>
+          </div>
+        )}
+
+        {tab==="eod"&&(
+          <div style={{maxWidth:560}}>
+            <div style={{fontSize:12,color:"#f59e0b",fontWeight:700,letterSpacing:"0.1em",marginBottom:4}}>📤 EOD REPORT</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:16}}>Send Slack report + Emails to KAMs and Mohit.</div>
+            <DateFilter/>
+            <div style={{...S.card(),marginBottom:16}}>
+              <div style={{fontSize:10,color:"#64748b",marginBottom:10,letterSpacing:"0.08em"}}>📧 EMAIL ROUTING</div>
+              {[
+                {who:"Azad Khan",email:"azad.k@cmsupport.live",issues:"Pickup + RTO",count:filtered.filter(e=>e.issue==="Pickup Issue"||e.issue==="RTO Issue").length},
+                {who:"Anoop",email:"anoop@cmsupport.live",issues:"RVP Pickup",count:filtered.filter(e=>e.issue==="RVP Pickup Issue").length},
+                {who:"Sagar",email:"sagar@citymall.live",issues:"Shipment Delivery",count:filtered.filter(e=>e.issue==="Shipment Delivery Issue").length},
+                {who:"Mohit",email:"mohit.bhende@citymall.live",issues:"All tickets (compiled)",count:filtered.length},
+              ].map(k=>(
+                <div key={k.who} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #0f1117"}}>
+                  <div>
+                    <span style={{fontSize:12,fontWeight:700,color:"#f1f5f9"}}>{k.who}</span>
+                    <div style={{fontSize:10,color:"#64748b"}}>{k.issues}</div>
+                  </div>
+                  <span style={{fontSize:14,fontWeight:700,color:k.count>0?"#f59e0b":"#475569"}}>{k.count} tickets</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={sendEmails} disabled={emailLoading||!filtered.length} style={{...S.btn("#6366f1","#fff",emailLoading||!filtered.length),marginBottom:10}}>
+              {emailLoading?"⏳ SENDING EMAILS...":"📧 SEND EMAIL REPORTS TO KAMs"}
+            </button>
+            {emailStatus&&<div style={{marginBottom:16,padding:"12px 16px",background:emailStatus.startsWith("✅")?"#1e1b4b":"#450a0a",border:`1px solid ${emailStatus.startsWith("✅")?"#6366f1":"#f87171"}`,borderRadius:8,fontSize:12,color:emailStatus.startsWith("✅")?"#a5b4fc":"#f87171",whiteSpace:"pre-line"}}>{emailStatus}</div>}
+            <div style={{height:1,background:"#1e293b",margin:"16px 0"}}/>
+            <button onClick={sendSlack} disabled={slackLoading||!filtered.length} style={{...S.btn("#4ade80","#0f1117",slackLoading||!filtered.length),marginBottom:10}}>
+              {slackLoading?"⏳ SENDING...":"🚀 SEND SLACK REPORT"}
+            </button>
+            {filtered.length===0&&<div style={{fontSize:11,color:"#64748b",textAlign:"center",marginBottom:10}}>Add at least one entry first.</div>}
+            {slackStatus&&<div style={{marginBottom:12,padding:"12px 16px",background:slackStatus.startsWith("✅")?"#064e3b":"#450a0a",border:`1px solid ${slackStatus.startsWith("✅")?"#34d399":"#f87171"}`,borderRadius:8,fontSize:13,color:slackStatus.startsWith("✅")?"#34d399":"#f87171"}}>{slackStatus}</div>}
+            {slackPreview&&<div style={{...S.card(),marginTop:8}}>
+              <div style={{fontSize:10,color:"#64748b",marginBottom:8}}>📋 SLACK PREVIEW</div>
+              <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",fontFamily:"inherit",margin:0}}>{slackPreview}</pre>
+            </div>}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
