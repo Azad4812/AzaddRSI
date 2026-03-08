@@ -65,12 +65,14 @@ export default function App() {
   const [filterFrom, setFilterFrom] = useState(todayStr());
   const [filterTo, setFilterTo]     = useState(todayStr());
   const [filterMode, setFilterMode] = useState("today");
+  const [loadError, setLoadError]   = useState(null);
   const [sending, setSending]       = useState(false);
   const [sendStatus, setSendStatus] = useState(null);
   const [sendPreview, setSendPreview] = useState(null);
 
   const loadFromSheet = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res  = await fetch("/api/get-entries");
       const data = await res.json();
@@ -79,8 +81,10 @@ export default function App() {
           ...e, id:Number(e.id),
           diffMins: e.diffMins ? Number(e.diffMins) : null,
         })));
+      } else {
+        setLoadError(data.error || JSON.stringify(data).slice(0,200));
       }
-    } catch(e) { console.error("Load failed:", e); }
+    } catch(e) { setLoadError(e.message); }
     setLoading(false);
   }, []);
 
@@ -201,6 +205,15 @@ export default function App() {
       <div style={{fontSize:36}}>📦</div>
       <div style={{fontSize:14,color:"#f59e0b",letterSpacing:"0.1em"}}>LOADING FROM GOOGLE SHEET...</div>
       <div style={{fontSize:11,color:"#64748b"}}>Please wait</div>
+    </div>
+  );
+
+  if (loadError) return (
+    <div style={{...S.page,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:24}}>
+      <div style={{fontSize:36}}>⚠️</div>
+      <div style={{fontSize:14,color:"#f87171",letterSpacing:"0.1em"}}>FAILED TO LOAD DATA</div>
+      <div style={{fontSize:11,color:"#94a3b8",background:"#1e293b",padding:"10px 16px",borderRadius:8,maxWidth:400,wordBreak:"break-all"}}>{loadError}</div>
+      <button onClick={loadFromSheet} style={{background:"#f59e0b",color:"#0f1117",border:"none",borderRadius:8,padding:"10px 20px",fontFamily:"inherit",fontWeight:700,cursor:"pointer"}}>🔄 RETRY</button>
     </div>
   );
 
