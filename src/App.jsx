@@ -3,24 +3,24 @@ import { useState, useEffect, useCallback } from "react";
 
 const TEAM = ["Vinod", "Shivam"];
 const ISSUES = ["Pickup Issue", "Shipment Delivery Issue", "RTO Issue", "RVP Pickup Issue"];
-const COURIERS = ["Ekart","Ecom Express","Delhivery", "Delhivery Premium", "Delhivery Air", "XpressBees", "Shadowfax", "Amazon", "BlueDart", "BlueDart Air", "Other"];
+const COURIERS = ["Ekart", "Delhivery", "Delhivery Premium", "Delhivery Air", "XpressBees", "Shadowfax", "Amazon", "BlueDart", "BlueDart Air", "Other"];
 const STATUS = ["Resolved", "Pending", "Escalated"];
-const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
+const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
 const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyHOU-kIu-ozFO7dJRBKj63heHLBa4KnpiiTLoFX_X-yEBst8Qo-suWbHffnx6t46Bt/exec";
 
 const KAM_MAP = {
-  "Pickup Issue":            { name: "Azad Khan",  email: "azad.k@cmsupport.live" },
-  "RTO Issue":               { name: "Azad Khan",  email: "azad.k@cmsupport.live" },
-  "RVP Pickup Issue":        { name: "Anoop",      email: "anoop@cmsupport.live" },
-  "Shipment Delivery Issue": { name: "Sagar",      email: "sagar@citymall.live" },
+  "Pickup Issue":            { name: "Azad Khan", email: "azad.k@cmsupport.live" },
+  "RTO Issue":               { name: "Azad Khan", email: "azad.k@cmsupport.live" },
+  "RVP Pickup Issue":        { name: "Anoop",     email: "anoop@cmsupport.live" },
+  "Shipment Delivery Issue": { name: "Sagar",     email: "sagar@citymall.live" },
 };
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
 async function sheetRequest(action, data) {
   try {
-    await fetch(SHEET_API_URL, {
-      method: "POST", headers: { "Content-Type": "text/plain" },
+    await fetch("/api/sheet-action", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, ...data }),
     });
   } catch(e) { console.error("Sheet sync failed:", e); }
@@ -65,16 +65,14 @@ export default function App() {
   const [filterFrom, setFilterFrom] = useState(todayStr());
   const [filterTo, setFilterTo]     = useState(todayStr());
   const [filterMode, setFilterMode] = useState("today");
-  const [slackLoading, setSlackLoading] = useState(false);
-  const [slackStatus, setSlackStatus]   = useState(null);
-  const [slackPreview, setSlackPreview] = useState(null);
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailStatus, setEmailStatus]   = useState(null);
+  const [sending, setSending]       = useState(false);
+  const [sendStatus, setSendStatus] = useState(null);
+  const [sendPreview, setSendPreview] = useState(null);
 
   const loadFromSheet = useCallback(async () => {
     setLoading(true);
     try {
-      const res  = await fetch(SHEET_API_URL);
+      const res  = await fetch("/api/get-entries");
       const data = await res.json();
       if (data.success && data.entries) {
         setEntries(data.entries.map(e => ({
@@ -137,30 +135,35 @@ export default function App() {
     await sheetRequest("delete",{id});
   };
 
-  const sendSlack = async () => {
-    if (!filtered.length){setSlackStatus("❌ No entries.");return;}
-    setSlackLoading(true); setSlackStatus(null); setSlackPreview(null);
-    try {
-      const res = await fetch("/api/send-report",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({entries:filtered,stats,winner:winner.person,slackWebhook:SLACK_WEBHOOK})});
-      const d = await res.json();
-      if (d.success){setSlackPreview(d.report);setSlackStatus("✅ Sent to Slack!");}
-      else setSlackStatus(`❌ ${d.error}`);
-    } catch {setSlackStatus("❌ Network error.");}
-    setSlackLoading(false);
-  };
-
-  const sendEmails = async () => {
-    if (!filtered.length){setEmailStatus("❌ No entries to send.");return;}
-    setEmailLoading(true); setEmailStatus(null);
+  // ONE button — sends BOTH Slack + Email together
+  const sendAll = async () => {
+    if (!filtered.length){ setSendStatus("❌ No entries to report."); return; }
+    setSending(true); setSendStatus(null); setSendPreview(null);
     const dateLabel = filterMode==="today"
       ? `Today (${formatDate(todayStr())})`
       : `${formatDate(filterFrom)} → ${formatDate(filterTo)}`;
+    const results = [];
+
+    // 1. Send Slack
     try {
-      await sheetRequest("sendEmails",{ entries:filtered, dateLabel });
+      const res = await fetch("/api/send-report", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ entries:filtered, stats, winner:winner.person, slackWebhook:SLACK_WEBHOOK })
+      });
+      const d = await res.json();
+      if (d.success){ results.push("✅ Slack sent!"); setSendPreview(d.report); }
+      else results.push(`❌ Slack: ${d.error}`);
+    } catch { results.push("❌ Slack: Network error"); }
+
+    // 2. Send Emails
+    try {
+      await sheetRequest("sendEmails", { entries:filtered, dateLabel });
       const kamsSent = [...new Set(filtered.map(e=>KAM_MAP[e.issue]?.name).filter(Boolean))];
-      setEmailStatus(`✅ Emails sent!\n📧 ${kamsSent.join(", ")} + Mohit (compiled)`);
-    } catch { setEmailStatus("❌ Email sending failed."); }
-    setEmailLoading(false);
+      results.push(`✅ Emails sent to: ${kamsSent.join(", ")} + Mohit`);
+    } catch { results.push("❌ Email sending failed"); }
+
+    setSendStatus(results.join("\n"));
+    setSending(false);
   };
 
   const issueCount = {};
@@ -212,10 +215,10 @@ export default function App() {
               <div style={{fontSize:10,color:"#64748b",letterSpacing:"0.1em"}}>WHATSAPP GROUP · EOD MONITOR</div>
             </div>
           </div>
-          <button onClick={loadFromSheet} title="Refresh from Sheet" style={{background:"none",border:"1px solid #334155",borderRadius:8,padding:"6px 10px",color:"#64748b",cursor:"pointer",fontSize:16}}>🔄</button>
+          <button onClick={loadFromSheet} style={{background:"none",border:"1px solid #334155",borderRadius:8,padding:"6px 10px",color:"#64748b",cursor:"pointer",fontSize:16}}>🔄</button>
         </div>
         {syncStatus&&<div style={{fontSize:11,marginBottom:10,letterSpacing:"0.06em",color:syncStatus==="saved"?"#34d399":syncStatus==="error"?"#f87171":"#f59e0b"}}>
-          {syncStatus==="saving"?"⏳ Saving to Google Sheet...":syncStatus==="saved"?"✅ Saved to Google Sheet":"❌ Sync failed"}
+          {syncStatus==="saving"?"⏳ Saving...":syncStatus==="saved"?"✅ Saved to Google Sheet":"❌ Sync failed"}
         </div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
           {[
@@ -342,7 +345,7 @@ export default function App() {
               ))}
             </div>
             <div style={{...S.card(),marginBottom:12}}>
-              <div style={{fontSize:11,color:"#64748b",letterSpacing:"0.08em",marginBottom:12}}>📧 KAM REPORT BREAKDOWN</div>
+              <div style={{fontSize:11,color:"#64748b",letterSpacing:"0.08em",marginBottom:12}}>📧 KAM BREAKDOWN</div>
               {Object.entries(KAM_MAP).reduce((acc,[issue,kam])=>{
                 if(!acc.find(x=>x.email===kam.email)) acc.push({...kam,issues:[]});
                 acc.find(x=>x.email===kam.email).issues.push(issue);
@@ -388,15 +391,15 @@ export default function App() {
         {tab==="eod"&&(
           <div style={{maxWidth:560}}>
             <div style={{fontSize:12,color:"#f59e0b",fontWeight:700,letterSpacing:"0.1em",marginBottom:4}}>📤 EOD REPORT</div>
-            <div style={{fontSize:12,color:"#64748b",marginBottom:16}}>Send Slack report + Emails to KAMs and Mohit.</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:16}}>Sends Slack + Emails to KAMs and Mohit in one click.</div>
             <DateFilter/>
             <div style={{...S.card(),marginBottom:16}}>
               <div style={{fontSize:10,color:"#64748b",marginBottom:10,letterSpacing:"0.08em"}}>📧 EMAIL ROUTING</div>
               {[
-                {who:"Azad Khan",email:"azad.k@cmsupport.live",issues:"Pickup + RTO",count:filtered.filter(e=>e.issue==="Pickup Issue"||e.issue==="RTO Issue").length},
-                {who:"Anoop",email:"anoop@cmsupport.live",issues:"RVP Pickup",count:filtered.filter(e=>e.issue==="RVP Pickup Issue").length},
-                {who:"Sagar",email:"sagar@citymall.live",issues:"Shipment Delivery",count:filtered.filter(e=>e.issue==="Shipment Delivery Issue").length},
-                {who:"Mohit",email:"mohit.bhende@citymall.live",issues:"All tickets (compiled)",count:filtered.length},
+                {who:"Azad Khan",issues:"Pickup + RTO",count:filtered.filter(e=>e.issue==="Pickup Issue"||e.issue==="RTO Issue").length},
+                {who:"Anoop",issues:"RVP Pickup",count:filtered.filter(e=>e.issue==="RVP Pickup Issue").length},
+                {who:"Sagar",issues:"Shipment Delivery",count:filtered.filter(e=>e.issue==="Shipment Delivery Issue").length},
+                {who:"Mohit",issues:"All tickets (compiled)",count:filtered.length},
               ].map(k=>(
                 <div key={k.who} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #0f1117"}}>
                   <div>
@@ -407,19 +410,21 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <button onClick={sendEmails} disabled={emailLoading||!filtered.length} style={{...S.btn("#6366f1","#fff",emailLoading||!filtered.length),marginBottom:10}}>
-              {emailLoading?"⏳ SENDING EMAILS...":"📧 SEND EMAIL REPORTS TO KAMs"}
-            </button>
-            {emailStatus&&<div style={{marginBottom:16,padding:"12px 16px",background:emailStatus.startsWith("✅")?"#1e1b4b":"#450a0a",border:`1px solid ${emailStatus.startsWith("✅")?"#6366f1":"#f87171"}`,borderRadius:8,fontSize:12,color:emailStatus.startsWith("✅")?"#a5b4fc":"#f87171",whiteSpace:"pre-line"}}>{emailStatus}</div>}
-            <div style={{height:1,background:"#1e293b",margin:"16px 0"}}/>
-            <button onClick={sendSlack} disabled={slackLoading||!filtered.length} style={{...S.btn("#4ade80","#0f1117",slackLoading||!filtered.length),marginBottom:10}}>
-              {slackLoading?"⏳ SENDING...":"🚀 SEND SLACK REPORT"}
+
+            <button onClick={sendAll} disabled={sending||!filtered.length} style={{...S.btn(sending?"#334155":"#f59e0b",sending?"#64748b":"#0f1117",sending||!filtered.length),fontSize:13,padding:"16px 20px",marginBottom:10}}>
+              {sending?"⏳ SENDING REPORT...":"🚀 SEND EOD REPORT (Slack + Email)"}
             </button>
             {filtered.length===0&&<div style={{fontSize:11,color:"#64748b",textAlign:"center",marginBottom:10}}>Add at least one entry first.</div>}
-            {slackStatus&&<div style={{marginBottom:12,padding:"12px 16px",background:slackStatus.startsWith("✅")?"#064e3b":"#450a0a",border:`1px solid ${slackStatus.startsWith("✅")?"#34d399":"#f87171"}`,borderRadius:8,fontSize:13,color:slackStatus.startsWith("✅")?"#34d399":"#f87171"}}>{slackStatus}</div>}
-            {slackPreview&&<div style={{...S.card(),marginTop:8}}>
+            {sendStatus&&(
+              <div style={{marginBottom:12,padding:"14px 16px",background:"#1e293b",border:"1px solid #334155",borderRadius:8,fontSize:12,whiteSpace:"pre-line"}}>
+                {sendStatus.split("\n").map((line,i)=>(
+                  <div key={i} style={{color:line.startsWith("✅")?"#34d399":line.startsWith("❌")?"#f87171":"#94a3b8",marginBottom:4}}>{line}</div>
+                ))}
+              </div>
+            )}
+            {sendPreview&&<div style={{...S.card(),marginTop:8}}>
               <div style={{fontSize:10,color:"#64748b",marginBottom:8}}>📋 SLACK PREVIEW</div>
-              <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",fontFamily:"inherit",margin:0}}>{slackPreview}</pre>
+              <pre style={{fontSize:11,color:"#94a3b8",whiteSpace:"pre-wrap",fontFamily:"inherit",margin:0}}>{sendPreview}</pre>
             </div>}
           </div>
         )}
