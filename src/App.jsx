@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const TEAM = ["Vinod", "Shivam"];
 const ISSUES = ["Pickup Issue", "Shipment Delivery Issue", "RTO Issue", "RVP Pickup Issue"];
-const COURIERS = ["Delhivery", "Ecom Express", "XpressBees", "BlueDart", "DTDC", "Other"];
+const COURIERS = ["Ekart","Ecom Express","Delhivery", "Delhivery Premium", "Delhivery Air", "XpressBees", "Shadowfax", "Amazon", "BlueDart", "BlueDart Air", "Other"];
 const STATUS = ["Resolved", "Pending", "Escalated"];
 const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
 const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyHOU-kIu-ozFO7dJRBKj63heHLBa4KnpiiTLoFX_X-yEBst8Qo-suWbHffnx6t46Bt/exec";
